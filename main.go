@@ -10,6 +10,8 @@ import (
 	"path"
 	"strconv"
 	"strings"
+
+	"github.com/lithammer/dedent"
 )
 
 type PaddingType int
@@ -66,23 +68,43 @@ func crash(err error) {
 }
 
 func main() {
-	padding := flag.String("p", "", "Padding to add to all 4 sides of the image. Either an amount of pixels or a percentage relative to the output image")
-	paddingX := flag.String("px", "", "Padding to add to the left and right sides of the image. Either an amount of pixels or a percentage relative to the output image")
-	paddingY := flag.String("py", "", "Padding to add to the top and bottom sides of the image. Either an amount of pixels or a percentage relative to the output image")
-	paddingT := flag.String("pt", "", "Padding to add to the top sides of the image. Either an amount of pixels or a percentage relative to the output image")
-	paddingR := flag.String("pr", "", "Padding to add to the right sides of the image. Either an amount of pixels or a percentage relative to the output image")
-	paddingB := flag.String("pb", "", "Padding to add to the bottom sides of the image. Either an amount of pixels or a percentage relative to the output image")
-	paddingL := flag.String("pl", "", "Padding to add to the left sides of the image. Either an amount of pixels or a percentage relative to the output image")
+	padding := flag.String("p", "", dedent.Dedent(`Padding to add to all 4 sides of the image. 
+		Either an amount of pixels or a percentage relative to the output image`))
+	paddingX := flag.String("px", "", dedent.Dedent(`Padding to add to the left and right sides of the image. 
+		Either an amount of pixels or a percentage relative to the output image`))
+	paddingY := flag.String("py", "", dedent.Dedent(`Padding to add to the top and bottom sides of the image.
+		Either an amount of pixels or a percentage relative to the output image`))
+	paddingT := flag.String("pt", "", dedent.Dedent(`Padding to add to the top sides of the image.
+		Either an amount of pixels or a percentage relative to the output image`))
+	paddingR := flag.String("pr", "", dedent.Dedent(`Padding to add to the right sides of the image.
+		Either an amount of pixels or a percentage relative to the output image`))
+	paddingB := flag.String("pb", "", dedent.Dedent(`Padding to add to the bottom sides of the image.
+		Either an amount of pixels or a percentage relative to the output image`))
+	paddingL := flag.String("pl", "", dedent.Dedent(`Padding to add to the left sides of the image.
+		Either an amount of pixels or a percentage relative to the output image`))
 
-	tolerance := flag.Int("t", 0, "Tolerance for detecting transparent pixels. 0-255, 0 being exact and 255 being anything")
-	radius := flag.Int("r", 0, "Radius of non trasparent pixels around the current pixel for it to be considered an edge. Must be >= 0")
+	tolerance := flag.Int("t", 0, dedent.Dedent(`Tolerance for detecting transparent pixels. 
+		0-255, 0 being exact and 255 being anything`))
+	// radius := flag.Int("r", 0, dedent.Dedent(`
+	// 	Radius of non trasparent pixels around the current pixel for it to be
+	// 	considered an edge. Must be >= 0`))
 
-	outFolder := flag.String("o", "./centered", "Output folder. If not specified, the output files will be written to a \"centered\" folder in the current working directory.")
+	outFolder := flag.String("o", "./centered", dedent.Dedent(`Output folder. If not specified, the output files will be written to 
+		a \"centered\" folder in the current working directory.`))
 
-	stopAtFirstError := flag.Bool("s", false, "Stop at the first error encountered. If not specified, the program will continue processing the rest of the files.")
+	stopAtFirstError := flag.Bool("s", false, dedent.Dedent(`Stop at the first error encountered. If not specified, the program will
+		continue processing the rest of the files.`))
 
-	force := flag.Bool("f", false, "Force overwrite of existing files")
+	force := flag.Bool("f", false, dedent.Dedent(`Force overwrite of existing files`))
 
+	flag.Usage = func() {
+		fmt.Fprintf(os.Stderr, "%s [OPTIONS] FILE [FILEs...] .\n\n", path.Base(os.Args[0]))
+
+		fmt.Fprintln(os.Stderr, "Center images by cropping out transparent pixels.")
+		fmt.Fprintln(os.Stderr, "\nOPTIONS:")
+
+		flag.PrintDefaults()
+	}
 	flag.Parse()
 
 	paddingArgs := PaddingArgs{}
@@ -151,7 +173,7 @@ func main() {
 	args := Args{
 		Padding:          paddingArgs,
 		Tolerance:        *tolerance,
-		Radius:           *radius,
+		Radius:           0,
 		ReadStdin:        len(flag.Args()) == 0,
 		Files:            flag.Args(),
 		OutFolder:        *outFolder,
