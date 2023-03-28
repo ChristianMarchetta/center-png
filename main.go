@@ -1,10 +1,13 @@
 package main
 
 import (
+	"errors"
 	"flag"
 	"fmt"
 	_ "image/png"
+	"log"
 	"os"
+	"path"
 	"strconv"
 	"strings"
 )
@@ -35,7 +38,10 @@ type Args struct {
 	// Indicates whether the program should read from stdin
 	ReadStdin bool
 	// If ReadString is false, these are the paths to the input files
-	Files []string
+	Files            []string
+	OutFolder        string
+	StopAtFirstError bool
+	Force            bool
 }
 
 func parsePixelOrPercent(s string) (PaddingArg, error) {
@@ -70,6 +76,12 @@ func main() {
 
 	tolerance := flag.Int("t", 0, "Tolerance for detecting transparent pixels. 0-255, 0 being exact and 255 being anything")
 	radius := flag.Int("r", 0, "Radius of non trasparent pixels around the current pixel for it to be considered an edge. Must be >= 0")
+
+	outFolder := flag.String("o", "./centered", "Output folder. If not specified, the output files will be written to a \"centered\" folder in the current working directory.")
+
+	stopAtFirstError := flag.Bool("s", false, "Stop at the first error encountered. If not specified, the program will continue processing the rest of the files.")
+
+	force := flag.Bool("f", false, "Force overwrite of existing files")
 
 	flag.Parse()
 
@@ -137,10 +149,80 @@ func main() {
 	}
 
 	args := Args{
-		Padding:   paddingArgs,
-		Tolerance: *tolerance,
-		Radius:    *radius,
-		ReadStdin: len(flag.Args()) == 0,
-		Files:     flag.Args(),
+		Padding:          paddingArgs,
+		Tolerance:        *tolerance,
+		Radius:           *radius,
+		ReadStdin:        len(flag.Args()) == 0,
+		Files:            flag.Args(),
+		OutFolder:        *outFolder,
+		StopAtFirstError: *stopAtFirstError,
+		Force:            *force,
 	}
+
+	if args.ReadStdin {
+		crash(errors.New("Empty input. Please specify at least one file to process."))
+	}
+
+	execute(args)
+}
+
+func execute(args Args) {
+
+	err := os.MkdirAll(args.OutFolder, 0755)
+	if err != nil {
+		crash(err)
+	}
+
+	for _, file := range args.Files {
+
+		outFile := path.Join(args.OutFolder, file)
+
+		if _, err := os.Stat(outFile); err == nil {
+			if !args.Force {
+				if args.StopAtFirstError {
+					crash(errors.New(fmt.Sprintf("File %s already exists.", outFile)))
+				} else {
+					log.Println("WARN: skipping", file, "because", outFile, "already exists.")
+					continue
+				}
+			}
+		} else if err != nil && !os.IsNotExist(err) {
+			if args.StopAtFirstError {
+				crash(err)
+			} else {
+				log.Println("WARN: skipping", file, "because", err)
+				continue
+			}
+		}
+
+		if stat, err := os.Stat(file); err == nil && stat.IsDir() {
+			if args.StopAtFirstError {
+				crash(errors.New(fmt.Sprintf("File %s is a directory.", outFile)))
+			} else {
+				log.Println("WARN: skipping", file, "because", outFile, "is a directory.")
+				continue
+			}
+		} else if err != nil {
+			if args.StopAtFirstError {
+				crash(err)
+			} else {
+				log.Println("WARN: skipping", file, "because", err)
+				continue
+			}
+		}
+
+		err = Process(file, outFile, uint8(args.Tolerance), args.Padding)
+		if err != nil {
+			if args.StopAtFirstError {
+				crash(fmt.Errorf("ERROR while processing %s: %w", file, err))
+			} else {
+				fmt.Fprintln(os.Stderr, err)
+				log.Printf("WARN: encountered error while processing file %s: %s", file, err.Error())
+				continue
+			}
+		}
+
+		log.Printf("PASS: processed file %s -> %s", file, outFile)
+	}
+
 }
