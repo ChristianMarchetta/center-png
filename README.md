@@ -1,7 +1,19 @@
 # center-png
 A command line tool to center png images based on their transparancy.
 
+## What problem does it solve?
+Imagine you are making an ecommerce that sells mugs.
+
+You take photos of your mugs, you then cut-out your photos with somethign like PhotoShop.
+
+You now have a bunch of photos of mugs with a transparent background, but if you display those 
+images in a grid, they won't be perfectly centered because you weren't super precise when taking the photos or when exporting the images from PhotoShop.
+
+By using this CLI you can center all those images very easily.
+
 ## Installation
+Run `go install github.com/cmar0027/center-png`, or
+
 - Clone the repo
 - Run `go install`
 
